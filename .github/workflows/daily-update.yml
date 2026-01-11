@@ -23,16 +23,25 @@ jobs:
           CURRENT_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           CURRENT_DAY=$(date -u +"%A, %B %d, %Y")
           
+          echo "Current date: $CURRENT_DATE"
+          echo "Current day: $CURRENT_DAY"
+          
           python3 << 'PYTHON_SCRIPT'
           import re
+          import sys
           
           current_date = "$CURRENT_DATE"
           current_day = "$CURRENT_DAY"
           
+          print(f"Updating README with date: {current_date}")
+          print(f"Updating README with day: {current_day}")
+          
           try:
               with open('README.md', 'r', encoding='utf-8') as f:
                   content = f.read()
+              print("README.md read successfully")
           except FileNotFoundError:
+              print("README.md not found, creating default")
               content = """# Daily Git Request
           
           ## Last Updated
@@ -41,14 +50,25 @@ jobs:
           ### Recent Updates
           """
           
+          original_content = content
+          
           # Update Last Updated section
           if '## Last Updated' in content:
+              print("Found '## Last Updated' section")
+              # Replace Last update line
               content = re.sub(r'Last update:.*', f'Last update: {current_date}', content)
-              if 'Date:' in content.split('## Last Updated')[1].split('##')[0]:
+              print(f"Updated 'Last update' to: {current_date}")
+              
+              # Check if Date line exists in the Last Updated section
+              last_updated_section = content.split('## Last Updated')[1].split('##')[0]
+              if 'Date:' in last_updated_section:
+                  print("Found existing Date line, updating it")
                   content = re.sub(r'Date:.*', f'Date: {current_day}', content)
               else:
+                  print("No Date line found, adding it")
                   content = re.sub(r'(Last update:.*)', f'\\1\nDate: {current_day}', content)
           else:
+              print("'## Last Updated' section not found, adding it")
               first_heading_end = content.find('\n', content.find('#'))
               if first_heading_end != -1:
                   content = (content[:first_heading_end+1] + 
@@ -57,9 +77,12 @@ jobs:
           
           # Update Recent Updates
           new_entry = f'- {current_day} - Automated daily update'
+          print(f"New entry to add: {new_entry}")
           
           if '### Recent Updates' in content:
+              print("Found '### Recent Updates' section")
               if new_entry not in content:
+                  print("Entry doesn't exist, adding it")
                   content = content.replace('### Recent Updates', f'### Recent Updates\n{new_entry}', 1)
                   
                   # Limit to 30 entries
@@ -73,26 +96,67 @@ jobs:
                               entries.append(lines[i])
                           i += 1
                       
+                      print(f"Found {len(entries)} entries in Recent Updates")
                       if len(entries) > 30:
+                          print("Limiting to 30 entries")
                           before = '\n'.join(lines[:recent_idx+1])
                           after = '\n'.join(lines[i:]) if i < len(lines) else ''
                           content = before + '\n' + '\n'.join(entries[:30]) + '\n' + after
+              else:
+                  print("Entry already exists, skipping duplicate")
           else:
+              print("'### Recent Updates' section not found, adding it")
               if not content.endswith('\n'):
                   content += '\n'
               content += f'\n### Recent Updates\n{new_entry}\n'
           
+          # Write updated content
           with open('README.md', 'w', encoding='utf-8') as f:
               f.write(content)
           
-          print("README.md updated successfully")
+          if content != original_content:
+              print("README.md updated successfully - changes detected")
+          else:
+              print("WARNING: README.md content unchanged!")
+          
+          # Show what changed
+          print("\n=== Changes made ===")
+          import difflib
+          diff = difflib.unified_diff(
+              original_content.splitlines(keepends=True),
+              content.splitlines(keepends=True),
+              fromfile='original',
+              tofile='updated'
+          )
+          for line in diff:
+              print(line, end='')
           PYTHON_SCRIPT
+          
+          echo "Showing git status:"
+          git status
+          
+          echo "Showing diff:"
+          git diff README.md || echo "No changes detected by git"
       
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git checkout -B main
+          
+          echo "Adding README.md to staging..."
           git add README.md
-          git diff --staged --quiet || git commit -m "Daily update: $(date -u +'%Y-%m-%d')"
-          git push origin main
+          
+          echo "Checking for changes..."
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            echo "Changes detected, committing..."
+            git commit -m "Daily update: $(date -u +'%Y-%m-%d')" || echo "Commit failed"
+            echo "Pushing to main..."
+            git push origin main || echo "Push failed"
+            echo "Push completed"
+          fi
+          
+          echo "Final git status:"
+          git status
