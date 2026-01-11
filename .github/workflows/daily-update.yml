@@ -20,8 +20,8 @@ jobs:
       
       - name: Update README
         run: |
-          CURRENT_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          CURRENT_DAY=$(date -u +"%A, %B %d, %Y")
+          export CURRENT_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          export CURRENT_DAY=$(date -u +"%A, %B %d, %Y")
           
           echo "Current date: $CURRENT_DATE"
           echo "Current day: $CURRENT_DAY"
@@ -29,9 +29,10 @@ jobs:
           python3 << 'PYTHON_SCRIPT'
           import re
           import sys
+          import os
           
-          current_date = "$CURRENT_DATE"
-          current_day = "$CURRENT_DAY"
+          current_date = os.environ.get('CURRENT_DATE', 'Not set')
+          current_day = os.environ.get('CURRENT_DAY', 'Not set')
           
           print(f"Updating README with date: {current_date}")
           print(f"Updating README with day: {current_day}")
@@ -137,6 +138,10 @@ jobs:
           
           echo "Showing diff:"
           git diff README.md || echo "No changes detected by git"
+          
+          echo "Verifying variables were set:"
+          echo "CURRENT_DATE in env: $CURRENT_DATE"
+          echo "CURRENT_DAY in env: $CURRENT_DAY"
       
       - name: Commit and push changes
         run: |
