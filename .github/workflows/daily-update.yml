@@ -30,12 +30,18 @@ jobs:
           import re
           import sys
           import os
+          import random
           
           current_date = os.environ.get('CURRENT_DATE', 'Not set')
           current_day = os.environ.get('CURRENT_DAY', 'Not set')
           
+          # Random name selection
+          names = ['TizLion AI', 'Tiz bot', 'tiz AI', 'Tiz Lion', 'tiz AI bot']
+          selected_name = random.choice(names)
+          
           print(f"Updating README with date: {current_date}")
           print(f"Updating README with day: {current_day}")
+          print(f"Selected random name: {selected_name}")
           
           try:
               with open('README.md', 'r', encoding='utf-8') as f:
@@ -56,9 +62,9 @@ jobs:
           # Update Last Updated section
           if '## Last Updated' in content:
               print("Found '## Last Updated' section")
-              # Replace Last update line
-              content = re.sub(r'Last update:.*', f'Last update: {current_date}', content)
-              print(f"Updated 'Last update' to: {current_date}")
+              # Replace Last update line with date and random name
+              content = re.sub(r'Last update:.*', f'Last update: {current_date} by {selected_name}', content)
+              print(f"Updated 'Last update' to: {current_date} by {selected_name}")
               
               # Check if Date line exists in the Last Updated section
               last_updated_section = content.split('## Last Updated')[1].split('##')[0]
@@ -73,11 +79,11 @@ jobs:
               first_heading_end = content.find('\n', content.find('#'))
               if first_heading_end != -1:
                   content = (content[:first_heading_end+1] + 
-                            f'\n## Last Updated\nLast update: {current_date}\nDate: {current_day}\n' + 
+                            f'\n## Last Updated\nLast update: {current_date} by {selected_name}\nDate: {current_day}\n' + 
                             content[first_heading_end+1:])
           
           # Update Recent Updates
-          new_entry = f'- {current_day} - Automated daily update'
+          new_entry = f'- {current_day} - Automated daily update by {selected_name}'
           print(f"New entry to add: {new_entry}")
           
           if '### Recent Updates' in content:
