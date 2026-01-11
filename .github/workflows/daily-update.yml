@@ -25,22 +25,99 @@ jobs:
           CURRENT_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           CURRENT_DAY=$(date -u +"%A, %B %d, %Y")
           
-          # Create updated README content
-          cat > README.md << EOF
-          # Daily Git Request
+          # Use Python to update README while preserving content
+          python3 << 'PYTHON_SCRIPT'
+          import re
           
-          This repository is automatically updated daily via GitHub Actions.
+          current_date = "$CURRENT_DATE"
+          current_day = "$CURRENT_DAY"
+          
+          # Read existing README
+          try:
+              with open('README.md', 'r', encoding='utf-8') as f:
+                  content = f.read()
+          except FileNotFoundError:
+              content = """# Daily Git Request
           
           ## Last Updated
-          Last update: $CURRENT_DATE
-          Date: $CURRENT_DAY
+          Last update: Not yet updated
           
           ## Update History
           This README is automatically updated every day at midnight UTC.
           
           ### Recent Updates
-          - $CURRENT_DAY - Automated daily update
-          EOF
+          """
+          
+          # Update "Last Updated" section
+          if '## Last Updated' in content:
+              # Replace Last update line
+              content = re.sub(r'Last update:.*', f'Last update: {current_date}', content)
+              # Update or add Date line
+              if 'Date:' in content.split('## Last Updated')[1].split('##')[0]:
+                  content = re.sub(r'Date:.*', f'Date: {current_day}', content)
+              else:
+                  content = re.sub(
+                      r'(Last update:.*)',
+                      f'\\1\nDate: {current_day}',
+                      content
+                  )
+          else:
+              # Insert after first heading
+              first_heading_end = content.find('\n', content.find('#'))
+              if first_heading_end != -1:
+                  content = (content[:first_heading_end+1] + 
+                            f'\n## Last Updated\nLast update: {current_date}\nDate: {current_day}\n' + 
+                            content[first_heading_end+1:])
+          
+          # Update Recent Updates section
+          new_entry = f'- {current_day} - Automated daily update'
+          
+          if '### Recent Updates' in content:
+              # Check if entry already exists (avoid duplicates)
+              if new_entry not in content:
+                  # Insert new entry right after "### Recent Updates"
+                  content = content.replace(
+                      '### Recent Updates',
+                      f'### Recent Updates\n{new_entry}',
+                      1
+                  )
+                  
+                  # Limit to 30 entries - simple approach: count and remove oldest
+                  lines = content.split('\n')
+                  recent_start_idx = None
+                  for i, line in enumerate(lines):
+                      if line.strip() == '### Recent Updates':
+                          recent_start_idx = i
+                          break
+                  
+                  if recent_start_idx is not None:
+                      # Find all update entries
+                      entries = []
+                      i = recent_start_idx + 1
+                      while i < len(lines) and not lines[i].strip().startswith('##'):
+                          if lines[i].strip().startswith('-'):
+                              entries.append(lines[i])
+                          i += 1
+                      
+                      # Keep only first 30 (most recent)
+                      if len(entries) > 30:
+                          # Rebuild content with limited entries
+                          before_recent = '\n'.join(lines[:recent_start_idx+1])
+                          after_recent_start = i
+                          after_recent = '\n'.join(lines[after_recent_start:]) if after_recent_start < len(lines) else ''
+                          content = before_recent + '\n' + '\n'.join(entries[:30]) + '\n' + after_recent
+          else:
+              # Add Recent Updates section
+              if not content.endswith('\n'):
+                  content += '\n'
+              content += f'\n### Recent Updates\n{new_entry}\n'
+          
+          # Write updated content
+          with open('README.md', 'w', encoding='utf-8') as f:
+              f.write(content)
+          
+          print("README.md updated successfully")
+          PYTHON_SCRIPT
       
       - name: Commit and push changes
         run: |
