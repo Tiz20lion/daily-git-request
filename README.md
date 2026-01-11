@@ -52,6 +52,8 @@ Automatically updates your README.md every day at midnight UTC using GitHub Acti
 Go to Actions tab → "Daily README Update" → "Run workflow"
 
 ## Last Updated
-Last update: Not yet updated
+Last update: $CURRENT_DATE
+Date: $CURRENT_DAY
 
 ### Recent Updates
+- $CURRENT_DAY - Automated daily update
