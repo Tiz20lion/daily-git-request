@@ -2,7 +2,7 @@ name: Daily README Update
 
 on:
   schedule:
-    - cron: '20 15 * * *'  # Runs every day at 15:20 UTC
+    - cron: '30 15 * * *'  # Runs every day at 15:30 UTC (3:30 PM UTC)
   workflow_dispatch:
 
 jobs:
