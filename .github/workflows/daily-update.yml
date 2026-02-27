@@ -31,9 +31,16 @@ jobs:
           import sys
           import os
           import random
+          from datetime import datetime
           
           current_date = os.environ.get('CURRENT_DATE', 'Not set')
           current_day = os.environ.get('CURRENT_DAY', 'Not set')
+          
+          # Parse CURRENT_DATE into a date object (fallback to UTC today)
+          try:
+              current_date_obj = datetime.strptime(current_date, "%Y-%m-%d %H:%M:%S %Z").date()
+          except Exception:
+              current_date_obj = datetime.utcnow().date()
           
           # Random name selection
           names = ['TizLion AI', 'Tiz bot', 'tiz AI', 'Tiz Lion', 'tiz AI bot']
@@ -104,11 +111,31 @@ jobs:
                           i += 1
                       
                       print(f"Found {len(entries)} entries in Recent Updates")
-                      if len(entries) > 30:
-                          print("Limiting to 30 entries")
-                          before = '\n'.join(lines[:recent_idx+1])
-                          after = '\n'.join(lines[i:]) if i < len(lines) else ''
-                          content = before + '\n' + '\n'.join(entries[:30]) + '\n' + after
+                      
+                      # Keep only entries from the last 10 days
+                      filtered_entries = []
+                      for line in entries:
+                          stripped = line.strip()
+                          if not stripped.startswith('-'):
+                              filtered_entries.append(line)
+                              continue
+                          
+                          # Expected format: "- <CURRENT_DAY> - Automated daily update by <name>"
+                          body = stripped.lstrip('-').strip()
+                          date_part = body.split(' - ', 1)[0].strip()
+                          
+                          try:
+                              entry_date = datetime.strptime(date_part, "%A, %B %d, %Y").date()
+                              if (current_date_obj - entry_date).days <= 10:
+                                  filtered_entries.append(line)
+                          except Exception:
+                              # If parsing fails, keep the line to avoid accidental data loss
+                              filtered_entries.append(line)
+                      
+                      print(f"Keeping {len(filtered_entries)} entries from last 10 days (or unparsable)")
+                      before = '\n'.join(lines[:recent_idx+1])
+                      after = '\n'.join(lines[i:]) if i < len(lines) else ''
+                      content = before + '\n' + '\n'.join(filtered_entries) + '\n' + after
               else:
                   print("Entry already exists, skipping duplicate")
           else:
